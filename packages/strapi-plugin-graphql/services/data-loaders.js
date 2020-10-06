@@ -46,6 +46,7 @@ module.exports = {
 
     this.loaders[modelUID] = new DataLoader(
       keys => {
+        console.log('Load', keys);
         // Extract queries from keys and merge similar queries.
         const { queries, map } = this.extractQueries(modelUID, _.cloneDeep(keys));
 

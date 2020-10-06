@@ -173,9 +173,10 @@ const buildAssocResolvers = model => {
         case 'oneToManyMorph':
         case 'manyMorphToOne':
         case 'manyMorphToMany':
-        case 'manyToManyMorph':
-        case 'manyWay': {
+        case 'manyToManyMorph': {
           resolver[association.alias] = async obj => {
+            console.log(association, obj);
+
             if (obj[association.alias]) {
               return obj[association.alias];
             }
@@ -193,60 +194,163 @@ const buildAssocResolvers = model => {
         }
         default: {
           resolver[association.alias] = async (obj, options) => {
-            // Construct parameters object to retrieve the correct related entries.
-            const params = {
-              model: targetModel.uid,
-            };
+            console.log(association.nature, obj[association.alias]);
+            const { nature, alias, via } = association;
+
+            const loader = strapi.plugins.graphql.services['data-loaders'].loaders[targetModel.uid];
 
             let queryOpts = initQueryOptions(targetModel, obj);
+            const params = {
+              ...queryOpts,
+              ...convertToParams(_.omit(amountLimiting(options), 'where')),
+              ...convertToQuery(options.where),
+            };
 
-            if (association.type === 'model') {
-              params[targetModel.primaryKey] = _.get(
-                obj,
-                `${association.alias}.${targetModel.primaryKey}`,
-                obj[association.alias]
-              );
-            } else {
-              const queryParams = amountLimiting(options);
-              queryOpts = {
-                ...queryOpts,
-                ...convertToParams(_.omit(queryParams, 'where')), // Convert filters (sort, limit and start/skip, publicationState)
-                ...convertToQuery(queryParams.where),
-              };
+            const localId = obj[model.primaryKey];
+            const foreignId = _.get(obj[alias], targetModel.primaryKey, obj[alias]);
 
-              if (
-                ((association.nature === 'manyToMany' && association.dominant) ||
-                  association.nature === 'manyWay') &&
-                _.has(obj, association.alias) // if populated
-              ) {
-                _.set(
-                  queryOpts,
-                  ['query', targetModel.primaryKey],
-                  obj[association.alias]
-                    ? obj[association.alias].map(val => val[targetModel.primaryKey] || val).sort()
-                    : []
-                );
-              } else {
-                _.set(queryOpts, ['query', association.via], obj[targetModel.primaryKey]);
+            if (['oneToOne', 'oneWay', 'manyToOne'].includes(nature)) {
+              if (_.has(obj, alias)) {
+                if (_.isObject(obj[alias])) {
+                  return obj[alias];
+                }
+
+                return loader.load({
+                  params: {
+                    model: targetModel.uid,
+                    [targetModel.primaryKey]: foreignId,
+                  },
+                  options: params,
+                  single: true,
+                });
               }
+
+              return null;
             }
 
-            const results = association.model
-              ? await strapi.plugins.graphql.services['data-loaders'].loaders[targetModel.uid].load(
-                  {
-                    params,
-                    options: queryOpts,
-                    single: true,
-                  }
-                )
-              : await strapi.plugins.graphql.services['data-loaders'].loaders[targetModel.uid].load(
-                  {
-                    options: queryOpts,
-                    association,
-                  }
-                );
+            if (['oneToMany', 'manyToMany'].includes(nature)) {
+              return loader.load({
+                options: {
+                  ...params,
+                  query: { [via]: localId },
+                },
+                association,
+              });
+            }
 
-            return assignOptions(results, obj);
+            if (nature === 'manyWay') {
+              const entry = await contentManager.fetch(model.uid, obj[primaryKey], {
+                populate: [association.alias],
+              });
+
+              console.log();
+
+              return loader.load({
+                options: {
+                  ...params,
+                  query: { id: entry[association.alias].map(el => el[targetModel.primaryKey]) },
+                },
+                association,
+              });
+            }
+
+            return [];
+
+            /*
+              one-to-one: (no params, just publicationState)
+              - obj populate -> return it
+              - obj id available -> fetch by returned id
+              - nothing available -> feetch by reversed id
+
+              one-way: (no params, just publicationState)
+                - obj populated -> return it 
+                - id populated -> fetch by id
+                - nothing -> can't find the object
+            
+              one-to-many: (sort, limit, start, filters)
+               - obj populated -> we don't know how many where populated -> fetch with reversed id
+               - ids populated -> same fetch by reversed or fetch by id_in
+               - nothing -> ???
+
+              many-to-one: (no params, just publication state)
+                - obj populated -> return it
+                - obj populated -> fetch by id
+                - nothing -> reversed with _in query ? 
+
+              many-many:(sort, limit, start, filters)
+                - obj populated -> return them
+                - ids populated -> fetch with id_in or fetch with reversed
+                - nothing -> ???
+
+              many-way: (sort, limit, start, filters)
+                - obj populated -> return them
+                - ids populated -> fetch with id_in
+                - nothing -> ???
+
+             */
+
+            // Construct parameters object to retrieve the correct related entries.
+            // const params = {
+            //   model: targetModel.uid,
+            // };
+
+            // let queryOpts = {};
+
+            // if (hasDraftAndPublish(targetModel)) {
+            //   _.assign(queryOpts, {
+            //     _publicationState: _.get(obj, '__options__.publicationState', DP_PUB_STATE_LIVE),
+            //   });
+            // }
+
+            // if (association.type === 'model') {
+            //   params[targetModel.primaryKey] = _.get(
+            //     obj,
+            //     `${association.alias}.${targetModel.primaryKey}`,
+            //     obj[association.alias]
+            //   );
+            // } else {
+            //   const queryParams = amountLimiting(options);
+            //   queryOpts = {
+            //     ...queryOpts,
+            //     ...convertToParams(_.omit(queryParams, 'where')), // Convert filters (sort, limit and start/skip, publicationState)
+            //     ...convertToQuery(queryParams.where),
+            //   };
+
+            //   if (
+            //     ((association.nature === 'manyToMany' && association.dominant) ||
+            //       association.nature === 'manyWay') &&
+            //     _.has(obj, association.alias) // if populated
+            //   ) {
+            //     _.set(
+            //       queryOpts,
+            //       ['query', targetModel.primaryKey],
+            //       obj[association.alias]
+            //         ? obj[association.alias].map(val => val[targetModel.primaryKey] || val).sort()
+            //         : []
+            //     );
+            //   } else {
+            //     _.set(queryOpts, ['query', association.via], obj[targetModel.primaryKey]);
+            //   }
+            // }
+
+            // console.log(params, queryOpts);
+
+            // const results = association.model
+            //   ? await strapi.plugins.graphql.services['data-loaders'].loaders[targetModel.uid].load(
+            //       {
+            //         params,
+            //         options: queryOpts,
+            //         single: true,
+            //       }
+            //     )
+            //   : await strapi.plugins.graphql.services['data-loaders'].loaders[targetModel.uid].load(
+            //       {
+            //         options: queryOpts,
+            //         association,
+            //       }
+            //     );
+
+            // return assignOptions(results, obj);
           };
           break;
         }
