@@ -214,27 +214,31 @@ const buildAssocResolvers = model => {
                   return obj[alias];
                 }
 
-                return loader.load({
-                  params: {
-                    model: targetModel.uid,
-                    [targetModel.primaryKey]: foreignId,
-                  },
-                  options: params,
-                  single: true,
-                });
+                return loader
+                  .load({
+                    params: {
+                      model: targetModel.uid,
+                      [targetModel.primaryKey]: foreignId,
+                    },
+                    options: params,
+                    single: true,
+                  })
+                  .then(r => assignOptions(r, obj));
               }
 
               return null;
             }
 
             if (['oneToMany', 'manyToMany'].includes(nature)) {
-              return loader.load({
-                options: {
-                  ...params,
-                  query: { [via]: localId },
-                },
-                association,
-              });
+              return loader
+                .load({
+                  options: {
+                    ...params,
+                    query: { [via]: localId },
+                  },
+                  association,
+                })
+                .then(r => assignOptions(r, obj));
             }
 
             if (nature === 'manyWay') {
@@ -242,13 +246,15 @@ const buildAssocResolvers = model => {
                 populate: [association.alias],
               });
 
-              return loader.load({
-                options: {
-                  ...params,
-                  query: { id: entry[association.alias].map(el => el[targetModel.primaryKey]) },
-                },
-                association,
-              });
+              return loader
+                .load({
+                  options: {
+                    ...params,
+                    query: { id: entry[association.alias].map(el => el[targetModel.primaryKey]) },
+                  },
+                  association,
+                })
+                .then(r => assignOptions(r, obj));
             }
 
             return [];

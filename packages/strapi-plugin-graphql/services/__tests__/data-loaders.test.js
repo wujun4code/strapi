@@ -209,17 +209,13 @@ describe('dataloader', () => {
       const results = [
         [{ id: 1 }],
         [{ id: 1 }, { id: 3 }, { id: 2 }],
-        [{ id: 1 }, { id: 3 }, { id: 2 }],
+        [{ id: 2 }],
         [
           { id: 1, reverseField: { id: 1 } },
           { id: 2, reverseField: [{ id: 2 }, { id: 1 }] },
           { id: 3, reverseField: { id: 1 } },
         ],
-        [
-          { id: 1, reverseField: { id: 1 } },
-          { id: 2, reverseField: [{ id: 2 }, { id: 1 }] },
-          { id: 3, reverseField: { id: 1 } },
-        ],
+        [{ id: 2, reverseField: [{ id: 2 }, { id: 1 }] }],
       ];
 
       const data = dataLoaders.mapData(uid, keys, results);
@@ -227,7 +223,7 @@ describe('dataloader', () => {
       expect(data).toEqual([
         { id: 1 },
         [{ id: 1 }, { id: 3 }, { id: 2 }],
-        [{ id: 3 }],
+        [{ id: 2 }],
         [
           { id: 1, reverseField: { id: 1 } },
           { id: 2, reverseField: [{ id: 2 }, { id: 1 }] },
@@ -277,8 +273,6 @@ describe('dataloader', () => {
       });
 
       expect(fetchAll).toHaveBeenCalledWith(uid, {
-        _start: 0,
-        _limit: -1,
         populate: ['fieldName'],
         query: {
           fieldName_in: ['1', '2'],
@@ -310,8 +304,6 @@ describe('dataloader', () => {
       });
 
       expect(fetchAll).toHaveBeenCalledWith(uid, {
-        _start: 0,
-        _limit: -1,
         populate: [],
         query: {
           id_in: ['1'],
@@ -347,8 +339,7 @@ describe('dataloader', () => {
       });
 
       expect(fetchAll).toHaveBeenCalledWith(uid, {
-        _start: 0,
-        _limit: -1,
+        _limit: 5,
         _sort: 'field',
         populate: [],
         query: {

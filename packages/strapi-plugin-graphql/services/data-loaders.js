@@ -64,25 +64,18 @@ module.exports = {
     const results = await Promise.all(queries.map(query => this.makeQuery(modelUID, query)));
 
     // Use to match initial queries order.
-    const r = this.mapData(modelUID, keys, results);
-
-    return r;
+    return this.mapData(modelUID, keys, results);
   },
 
   mapData(modelUID, keys, results) {
     return keys.map((query, index) => {
-      // Find the index of where we should extract the results.
       const data = results[index];
 
       if (query.single) {
         return _.first(data);
       }
 
-      const skip = _.get(query, 'options._start', 0);
-      const limit = _.get(query, 'options._limit', 100);
-
-      // Extracting ids from original request to map with query results.
-      return data.filter(entry => !_.isUndefined(entry)); //.slice(skip, skip + limit);
+      return data;
     });
   },
 
@@ -105,8 +98,6 @@ module.exports = {
       .map(_.toString)
       .uniq()
       .value();
-
-    console.log(params);
 
     // Run query and remove duplicated ID.
     return strapi.plugins['content-manager'].services['contentmanager'].fetchAll(modelUID, params);
