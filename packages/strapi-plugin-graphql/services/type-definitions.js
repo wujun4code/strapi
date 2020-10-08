@@ -175,8 +175,6 @@ const buildAssocResolvers = model => {
         case 'manyMorphToMany':
         case 'manyToManyMorph': {
           resolver[association.alias] = async obj => {
-            console.log(association, obj);
-
             if (obj[association.alias]) {
               return obj[association.alias];
             }
@@ -211,7 +209,7 @@ const buildAssocResolvers = model => {
             if (['oneToOne', 'oneWay', 'manyToOne'].includes(nature)) {
               if (_.has(obj, alias)) {
                 if (_.isObject(obj[alias])) {
-                  return obj[alias];
+                  return assignOptions(obj[alias], obj);
                 }
 
                 return loader
@@ -549,7 +547,15 @@ const buildCollectionType = model => {
         resolvers: {
           Query: {
             [pluralName]: async (parent, args, ctx, ast) => {
-              const results = await buildQuery(pluralName, resolverOpts)(parent, args, ctx, ast);
+              const results = await buildQuery(pluralName, resolverOpts)(
+                parent,
+                {
+                  ...args,
+                  populate: [],
+                },
+                ctx,
+                ast
+              );
 
               const queryOptions = _.pick(args, 'publicationState');
               return assignOptions(results, { [OPTIONS]: queryOptions });

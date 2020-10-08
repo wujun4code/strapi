@@ -152,10 +152,19 @@ const buildQueryContext = ({ options, graphqlContext }) => {
   // cause a lost of the Object prototype.
   const opts = amountLimiting(_options);
 
+  console.log(opts);
+
+  console.log({
+    ...convertToParams(_.omit(opts, 'where')),
+    ...convertToQuery(opts.where),
+  });
+
   ctx.query = {
     ...convertToParams(_.omit(opts, 'where')),
     ...convertToQuery(opts.where),
   };
+
+  console.log(ctx.query);
 
   ctx.params = convertToParams(opts);
 

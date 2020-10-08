@@ -19,7 +19,7 @@ module.exports = ({ db, eventHub, entityValidator }) => ({
    *
    * @return {Promise}
    */
-  async find({ params, populate = [] }, { model }) {
+  async find({ params, populate }, { model }) {
     const { kind } = db.getModel(model);
 
     // return first element and ignore filters
@@ -142,8 +142,8 @@ module.exports = ({ db, eventHub, entityValidator }) => ({
    * @return {Promise}
    */
 
-  search({ params }, { model }) {
-    return db.query(model).search(params);
+  search({ params, populate }, { model }) {
+    return db.query(model).search(params, populate);
   },
 
   /**

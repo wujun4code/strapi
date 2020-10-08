@@ -87,17 +87,15 @@ describe('dataloader', () => {
           primaryKey: 'id',
           associations: [],
         })),
-        plugins: {
-          ['content-manager']: {
-            services: {
-              contentmanager: { fetchAll: jest.fn(() => [{ id: 1 }]) },
-            },
-          },
+        query() {
+          return {
+            find: jest.fn(() => [{ id: 1 }]),
+          };
         },
       };
 
       let tmpMapData = dataLoaders.mapData;
-      dataLoaders.mapData = jest.fn((uid, keys, res) => res);
+      dataLoaders.mapData = jest.fn((keys, res) => res);
 
       const uid = 'uid';
       const keys = [
@@ -125,34 +123,6 @@ describe('dataloader', () => {
 
   describe('mapData', () => {
     test('mapData', () => {
-      global.strapi = {
-        getModel: jest.fn(uid => {
-          if (uid === 'target') {
-            return {
-              primaryKey: 'id',
-              associations: [
-                {
-                  alias: 'reverseField',
-                  model: 'parent',
-                },
-              ],
-            };
-          }
-
-          return {
-            primaryKey: 'id',
-            associations: [
-              {
-                via: 'reverseField',
-                alias: 'relation',
-                model: 'target',
-              },
-            ],
-          };
-        }),
-      };
-
-      const uid = 'target';
       const keys = [
         {
           single: true,
@@ -218,7 +188,7 @@ describe('dataloader', () => {
         [{ id: 2, reverseField: [{ id: 2 }, { id: 1 }] }],
       ];
 
-      const data = dataLoaders.mapData(uid, keys, results);
+      const data = dataLoaders.mapData(keys, results);
 
       expect(data).toEqual([
         { id: 1 },
@@ -247,7 +217,7 @@ describe('dataloader', () => {
 
     test('makeQuery', async () => {
       const uid = 'uid';
-      const fetchAll = jest.fn(() => [{ id: 1 }]);
+      const find = jest.fn(() => [{ id: 1 }]);
 
       global.strapi = {
         getModel: jest.fn(() => ({
@@ -258,12 +228,10 @@ describe('dataloader', () => {
             },
           ],
         })),
-        plugins: {
-          ['content-manager']: {
-            services: {
-              contentmanager: { fetchAll },
-            },
-          },
+        query() {
+          return {
+            find,
+          };
         },
       };
 
@@ -272,29 +240,27 @@ describe('dataloader', () => {
         alias: 'fieldName',
       });
 
-      expect(fetchAll).toHaveBeenCalledWith(uid, {
-        populate: ['fieldName'],
-        query: {
+      expect(find).toHaveBeenCalledWith(
+        {
           fieldName_in: ['1', '2'],
         },
-      });
+        []
+      );
     });
 
     test('makeQuery - 2', async () => {
       const uid = 'uid';
-      const fetchAll = jest.fn(() => [{ id: 1 }]);
+      const find = jest.fn(() => [{ id: 1 }]);
 
       global.strapi = {
         getModel: jest.fn(() => ({
           primaryKey: 'id',
           associations: [],
         })),
-        plugins: {
-          ['content-manager']: {
-            services: {
-              contentmanager: { fetchAll },
-            },
-          },
+        query() {
+          return {
+            find,
+          };
         },
       };
 
@@ -303,29 +269,27 @@ describe('dataloader', () => {
         alias: 'id',
       });
 
-      expect(fetchAll).toHaveBeenCalledWith(uid, {
-        populate: [],
-        query: {
+      expect(find).toHaveBeenCalledWith(
+        {
           id_in: ['1'],
         },
-      });
+        []
+      );
     });
 
     test('makeQuery - 3', async () => {
       const uid = 'uid';
-      const fetchAll = jest.fn(() => [{ id: 1 }]);
+      const find = jest.fn(() => [{ id: 1 }]);
 
       global.strapi = {
         getModel: jest.fn(() => ({
           primaryKey: 'id',
           associations: [],
         })),
-        plugins: {
-          ['content-manager']: {
-            services: {
-              contentmanager: { fetchAll },
-            },
-          },
+        query() {
+          return {
+            find,
+          };
         },
       };
 
@@ -338,14 +302,14 @@ describe('dataloader', () => {
         alias: 'id',
       });
 
-      expect(fetchAll).toHaveBeenCalledWith(uid, {
-        _limit: 5,
-        _sort: 'field',
-        populate: [],
-        query: {
+      expect(find).toHaveBeenCalledWith(
+        {
+          _limit: 5,
+          _sort: 'field',
           id_in: ['1'],
         },
-      });
+        []
+      );
     });
   });
 });

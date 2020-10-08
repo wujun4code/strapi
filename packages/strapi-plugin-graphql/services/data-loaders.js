@@ -64,10 +64,10 @@ module.exports = {
     const results = await Promise.all(queries.map(query => this.makeQuery(modelUID, query)));
 
     // Use to match initial queries order.
-    return this.mapData(modelUID, keys, results);
+    return this.mapData(keys, results);
   },
 
-  mapData(modelUID, keys, results) {
+  mapData(keys, results) {
     return keys.map((query, index) => {
       const data = results[index];
 
@@ -84,23 +84,17 @@ module.exports = {
       return [];
     }
 
-    const ref = strapi.getModel(modelUID);
-    const ast = ref.associations.find(ast => ast.alias === query.alias);
-
     const params = {
       ...query.options,
-      populate: ast ? [query.alias] : [],
-      query: {},
     };
 
-    params.query[`${query.alias}_in`] = _.chain(query.ids)
+    params[`${query.alias}_in`] = _.chain(query.ids)
       .filter(id => !_.isEmpty(id) || _.isInteger(id))
       .map(_.toString)
       .uniq()
       .value();
 
-    // Run query and remove duplicated ID.
-    return strapi.plugins['content-manager'].services['contentmanager'].fetchAll(modelUID, params);
+    return strapi.query(modelUID).find(params, []);
   },
 
   extractQueries(modelUID, keys) {

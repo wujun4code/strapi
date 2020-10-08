@@ -22,8 +22,6 @@ module.exports = {
         }
       : filters;
 
-    console.log(queryFilter);
-
     return strapi.entityService.find(
       {
         params: queryFilter,
